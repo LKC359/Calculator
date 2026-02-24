@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/png" sizes="192x192" href="CandleStick-192.png">
+  <meta charset="UTF-8" />
+  <title>Position Sizing Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 20px auto;
+      background-color: rgb(198, 239, 206);
+      padding: 20px;
+    }
+    label { 
+      display: block; 
+      margin-top: 10px; 
+      font-weight: 500;
+    }
+    input, select { 
+      padding: 8px; 
+      width: 100%; 
+      box-sizing: border-box; 
+      border: 2px solid #4CAF50;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    .row { 
+      display: flex; 
+      gap: 10px; 
+    }
+    .row > div { flex: 1; }
+    h1 {
+      color: #2E7D32;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    h2 { 
+      color: #1B5E20;
+      margin-top: 35px;
+      border-bottom: 3px solid #4CAF50;
+      padding-bottom: 8px;
+    }
+    .warning { 
+      color: #D32F2F !important; 
+      font-weight: bold; 
+    }
+    .ok { 
+      color: #2E7D32 !important; 
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+      margin-top: 20px;
+    }
+    
+    .results-col {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+      border: 2px solid rgba(76, 175, 80, 0.3);
+      backdrop-filter: blur(10px);
+    }
+    
+    .results-col h3 {
+      margin: 0 0 20px 0;
+      font-size: 1.3rem;
+      color: #1B5E20;
+      text-align: center;
+      position: relative;
+    }
+    
+    .results-col h3::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 3px;
+      background: linear-gradient(90deg, #4CAF50, #81C784);
+      border-radius: 2px;
+    }
+    
+    .results-col p {
+      margin: 12px 0;
+      font-size: 15px;
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      align-items: center;
+    }
+    
+    .results-col p:last-child {
+      border-bottom: none;
+      font-weight: bold;
+      background: rgba(76, 175, 80, 0.1);
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 15px;
+    }
+
+    #summary {
+      white-space: nowrap;
+      overflow-x: auto;
+      display: block;
+      padding: 8px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+
+    @media (max-width: 700px) {
+      .results-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+      body {
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Position Sizing Calculator</h1>
+
+  <h2>Inputs</h2>
+  <label>
+    Trading Capital ($)
+    <input type="number" id="capital" value="1000" step="0.01" />
+  </label>
+
+  <label>
+    Risk % per Trade (e.g. 0.05 = 5%)
+    <input type="number" id="riskPercent" value="0.05" step="0.0001" />
+  </label>
+
+  <label>
+    Entry Price
+    <input type="number" id="entryPrice" value="2.78" step="0.0001" />
+  </label>
+
+  <label>
+    Stop Loss Price
+    <input type="number" id="stopPrice" value="2.77" step="0.0001" />
+  </label>
+
+  <div class="row">
+    <div>
+      <label>
+        Trade Type
+        <select id="tradeType">
+          <option value="Swing" selected>Swing</option>
+          <option value="Position">Position</option>
+        </select>
+      </label>
+    </div>
+    <div>
+      <label>
+        Trade Direction
+        <select id="direction">
+          <option value="Long" selected>Long</option>
+          <option value="Short">Short</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <!-- Button removed: auto-calculation + auto-save instead -->
+
+  <h2>Results</h2>
+
+  <div class="results-grid">
+    <!-- LEFT COLUMN: Risk Metrics -->
+    <div class="results-col">
+      <h3>📉 Risk Metrics</h3>
+      <p>&nbsp;</p>
+      <p>Warning SL: <span id="slWarning" class="ok">OK</span></p>
+      <p>Position Size (Shares): <span id="posSizeShares"></span></p>
+      <p>Warning Capital: <span id="capitalWarning" class="ok">OK</span></p>
+      <p>&nbsp;</p>
+      <p>Risk Amount: <span id="riskAmount"></span></p>
+      <p>Fees (Buy + Sell): <span id="feesTotal"></span></p>
+      <p>Loss per Share: <span id="lossPerShare"></span></p>
+    </div>
+
+    <!-- RIGHT COLUMN: Trade Management -->
+    <div class="results-col">
+      <h3>🎯 Trade Management</h3>
+      <p>Buy Stop: <span id="buyStop"></span></p>
+      <p>Stop Loss: <span id="stopLossOut"></span></p>
+      <p>Position Size (Board Lot): <span id="posSizeLot"></span></p>
+      <p>Capital Required: <span id="capitalRequired"></span></p>
+      <p>R Multiple: <span id="rMultiple"></span></p>
+      <p>Reward (1R): <span id="reward1R"></span></p>
+      <p>Reward (2R): <span id="reward2R"></span></p>
+      <p>Trade Summary: <span id="summary"></span></p>
+    </div>
+  </div>
+
+    <script>
+    const STORAGE_KEY = 'positionCalcInputs_v1';
+
+    function floorTo100(x) {
+      return Math.floor(x / 100) * 100;
+    }
+
+    function saveInputs() {
+      const data = {
+        capital: document.getElementById('capital').value,
+        riskPercent: document.getElementById('riskPercent').value,
+        entryPrice: document.getElementById('entryPrice').value,
+        stopPrice: document.getElementById('stopPrice').value,
+        tradeType: document.getElementById('tradeType').value,
+        direction: document.getElementById('direction').value,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function loadInputs() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (data.capital !== undefined) document.getElementById('capital').value = data.capital;
+        if (data.riskPercent !== undefined) document.getElementById('riskPercent').value = data.riskPercent;
+        if (data.entryPrice !== undefined) document.getElementById('entryPrice').value = data.entryPrice;
+        if (data.stopPrice !== undefined) document.getElementById('stopPrice').value = data.stopPrice;
+        if (data.tradeType !== undefined) document.getElementById('tradeType').value = data.tradeType;
+        if (data.direction !== undefined) document.getElementById('direction').value = data.direction;
+      } catch (e) {
+        console.error('Failed to load saved inputs', e);
+      }
+    }
+
+    function calculate() {
+      const capital = parseFloat(document.getElementById('capital').value) || 0;
+      const riskPercent = parseFloat(document.getElementById('riskPercent').value) || 0;
+      const entry = parseFloat(document.getElementById('entryPrice').value) || 0;
+      const stop = parseFloat(document.getElementById('stopPrice').value) || 0;
+      const tradeType = document.getElementById('tradeType').value;
+      const direction = document.getElementById('direction').value;
+
+      const riskAmount = capital * riskPercent;
+
+      let buyStop;
+      if (tradeType === "Position" && direction === "Long") {
+        buyStop = entry + entry * 0.01;
+      } else if (tradeType === "Swing" && direction === "Long") {
+        buyStop = entry + 0.01;
+      } else if (tradeType === "Position" && direction === "Short") {
+        buyStop = entry - entry * 0.01;
+      } else if (tradeType === "Swing" && direction === "Short") {
+        buyStop = entry - 0.01;
+      } else {
+        buyStop = NaN;
+      }
+
+      let stopLossOut;
+      if (direction === "Long") {
+        stopLossOut = stop * 0.99;
+      } else if (direction === "Short") {
+        stopLossOut = stop * 1.01;
+      } else {
+        stopLossOut = NaN;
+      }
+
+      const lossPerShare = Math.abs(buyStop - stopLossOut);
+      const posSize = lossPerShare > 0 ? riskAmount / lossPerShare : 0;
+      const posSizeLot = posSize < 100 ? 100 : floorTo100(posSize);
+
+      const reward1R = direction === "Long" ? buyStop + lossPerShare : buyStop - lossPerShare;
+      const reward2R = direction === "Long" ? reward1R + lossPerShare : reward1R - lossPerShare;
+      
+      const reward1RDollar = Math.abs(reward1R - buyStop) * posSizeLot;
+      const reward2RDollar = Math.abs(reward2R - buyStop) * posSizeLot;
+      
+      const reward1RPercent = reward1R !== 0 ? Math.abs(reward1R - buyStop) / reward1R : 0;
+      const reward2RPercent = reward2R !== 0 ? Math.abs(reward2R - buyStop) / reward2R : 0;
+
+      const capitalRequired = isNaN(buyStop) ? 0 : buyStop * posSizeLot;
+      const rMultiple = 1;
+
+      // === FEES CALCULATION (BUY + SELL) ===
+      // Use board-lot position and buyStop price as transaction amount reference
+      const transactionAmount = buyStop * posSizeLot;
+
+      // per side
+      const commission = Math.max(0.0003 * transactionAmount, 0.99);
+      const platform = Math.max(0.0003 * transactionAmount, 0.99);
+      const tradingFee = 0.000075 * transactionAmount;
+      const clearingFee = 0.000325 * transactionAmount;
+      const feesBeforeTax = commission + platform + tradingFee + clearingFee;
+      const consumptionTax = 0.09 * feesBeforeTax;
+      const totalFeesOneSide = feesBeforeTax + consumptionTax;
+
+      // Buy + Sell
+      const totalFeesBuySell = 2 * totalFeesOneSide;
+
+      document.getElementById('riskAmount').textContent = `$${riskAmount.toFixed(2)}`;
+      document.getElementById('feesTotal').textContent = `$${totalFeesBuySell.toFixed(2)}`;
+      document.getElementById('lossPerShare').textContent = `$${lossPerShare.toFixed(3)}`;
+      document.getElementById('posSizeShares').textContent = posSize.toLocaleString();
+      document.getElementById('posSizeLot').textContent = posSizeLot.toLocaleString();
+      document.getElementById('buyStop').textContent = isNaN(buyStop) ? "Invalid selection" : buyStop.toFixed(3);
+      document.getElementById('stopLossOut').textContent = isNaN(stopLossOut) ? "-" : stopLossOut.toFixed(3);
+      document.getElementById('capitalRequired').textContent = `$${capitalRequired.toLocaleString()}`;
+      document.getElementById('rMultiple').textContent = rMultiple.toFixed(1) + " R";
+
+      document.getElementById('reward1R').textContent =
+        `${isNaN(reward1R) ? '-' : reward1R.toFixed(3)} | $${reward1RDollar.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} | ${(reward1RPercent * 100).toFixed(1)}%`;
+      
+      document.getElementById('reward2R').textContent =
+        `${isNaN(reward2R) ? '-' : reward2R.toFixed(3)} | $${reward2RDollar.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} | ${(reward2RPercent * 100).toFixed(1)}%`;
+
+      const summaryText = `${direction === "Long" ? "Buy" : "Sell"} ${posSizeLot.toLocaleString()} shares @ ${isNaN(buyStop) ? "-" : buyStop.toFixed(3)} | SL ${isNaN(stopLossOut) ? "-" : stopLossOut.toFixed(3)} | Risk $${riskAmount.toFixed(2)}`;
+      document.getElementById('summary').textContent = summaryText;
+
+      const slWarningEl = document.getElementById('slWarning');
+      let slWarningText = "OK";
+      let slWarningClass = "ok";
+      if (direction === "Long" && stop >= entry) {
+        slWarningText = "⚠ SL must be below Entry";
+        slWarningClass = "warning";
+      } else if (direction === "Short" && stop <= entry) {
+        slWarningText = "⚠ SL must be above Entry";
+        slWarningClass = "warning";
+      }
+      slWarningEl.textContent = slWarningText;
+      slWarningEl.className = slWarningClass;
+
+      const capitalWarningEl = document.getElementById('capitalWarning');
+      let capitalWarningText = "OK";
+      let capitalWarningClass = "ok";
+      if (capitalRequired > capital) {
+        capitalWarningText = "⚠ Capital exceeds account";
+        capitalWarningClass = "warning";
+      }
+      capitalWarningEl.textContent = capitalWarningText;
+      capitalWarningEl.className = capitalWarningClass;
+    }
+
+    // Load saved values, then calculate once
+    loadInputs();
+    calculate();
+
+    // Auto‑save + auto‑recalculate on any input change
+    document.querySelectorAll('input, select').forEach(el => {
+      el.addEventListener('input', () => {
+        saveInputs();
+        calculate();
+      });
+    });
+  </script>
+
+</body>
+</html>
